@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ModelMD — AI Model Diagnostics & Drift Platform</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Navigation Header -->
+    <header class="app-header">
+      <div class="header-container">
+        <div class="brand">
+          <div class="brand-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="brand-title">Model<span>MD</span></h1>
+            <p class="brand-subtitle">AI Model Diagnostic & Drift Observability Platform</p>
+          </div>
+        </div>
+
+        <!-- Module Navigation Tabs -->
+        <nav class="module-nav">
+          <button class="nav-tab active" id="tab-module-01" data-target="module-01-view">
+            Module 01: Baseline Diagnostics
+          </button>
+          <button class="nav-tab" id="tab-module-02" data-target="module-02-view">
+            Module 02: Health & Data Drift
+          </button>
+        </nav>
+
+        <div class="header-status">
+          <span class="status-indicator active"></span>
+          <span class="status-text">Engine Ready</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Security Advisory Banner -->
+    <div class="security-banner">
+      <div class="security-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+      </div>
+      <div class="security-content">
+        <strong>Security Notice & Local Sandbox Boundary:</strong>
+        Pickle and Joblib artifacts can execute arbitrary code upon deserialization. File extension checks do not guarantee safety. Only upload trusted local model artifacts. Model evaluation is isolated in a dedicated worker process with execution timeouts.
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="main-container">
+      <!-- Error Notification Banner -->
+      <div id="error-banner" class="alert-banner error hidden">
+        <div class="alert-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+        <div class="alert-body">
+          <h4 id="error-title">Evaluation Error</h4>
+          <p id="error-message"></p>
+        </div>
+        <button id="error-dismiss" class="alert-close">&times;</button>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- VIEW 1: MODULE 01 - BASELINE DIAGNOSTICS      -->
+      <!-- ============================================== -->
+      <div id="module-01-view" class="module-view active">
+        <!-- Input Configuration Grid -->
+        <section class="card-grid">
+          <!-- 1. Model Upload Card -->
+          <div class="card">
+            <div class="card-header">
+              <div class="step-badge">1</div>
+              <div>
+                <h2 class="card-title">Trained Model Artifact</h2>
+                <p class="card-desc">Upload or specify path to scikit-learn classifier (.joblib, .pkl)</p>
+              </div>
+            </div>
+
+            <div class="input-mode-tabs">
+              <button type="button" class="mode-tab active" data-target-mode="upload" data-card="model">📂 Browse Computer</button>
+              <button type="button" class="mode-tab" data-target-mode="path" data-card="model">📝 File Path / Project File</button>
+            </div>
+
+            <!-- Upload Dropzone -->
+            <label for="model-file-input" class="dropzone" id="model-dropzone">
+              <input type="file" id="model-file-input" class="visually-hidden-input" accept=".joblib,.pkl">
+              <div class="dropzone-inner">
+                <div class="upload-icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                  </svg>
+                </div>
+                <p class="dropzone-main">Click here to attach model file</p>
+                <p class="dropzone-hint">Supports .joblib or .pkl (or drag & drop)</p>
+                <div class="browse-pill">📂 Select File</div>
+              </div>
+            </label>
+
+            <!-- Path Input Option -->
+            <div class="path-input-panel hidden" id="model-path-panel">
+              <label class="field-hint" for="model-project-select">Select from workspace:</label>
+              <select class="form-control" id="model-project-select">
+                <option value="">-- Choose detected project model --</option>
+              </select>
+              <div style="margin-top: 8px; display: flex; gap: 8px;">
+                <input type="text" class="form-control" id="model-path-input" placeholder="Or enter path e.g. sample_data/sample_model.joblib">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-load-model-path">Load</button>
+              </div>
+            </div>
+
+            <div id="model-info" class="file-summary hidden">
+              <div class="file-summary-row">
+                <span class="file-name" id="model-filename">model.joblib</span>
+                <span class="file-badge" id="model-filesize">0 KB</span>
+              </div>
+              <div class="file-meta-note" id="model-meta-note">Artifact ready for evaluation</div>
+            </div>
+          </div>
+
+          <!-- 2. Dataset Upload Card -->
+          <div class="card">
+            <div class="card-header">
+              <div class="step-badge">2</div>
+              <div>
+                <h2 class="card-title">Labeled CSV Dataset</h2>
+                <p class="card-desc">Upload or specify path to test or validation CSV dataset</p>
+              </div>
+            </div>
+
+            <div class="input-mode-tabs">
+              <button type="button" class="mode-tab active" data-target-mode="upload" data-card="dataset">📂 Browse Computer</button>
+              <button type="button" class="mode-tab" data-target-mode="path" data-card="dataset">📝 File Path / Project File</button>
+            </div>
+
+            <!-- Upload Dropzone -->
+            <label for="dataset-file-input" class="dropzone" id="dataset-dropzone">
+              <input type="file" id="dataset-file-input" class="visually-hidden-input" accept=".csv">
+              <div class="dropzone-inner">
+                <div class="upload-icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                  </svg>
+                </div>
+                <p class="dropzone-main">Click here to attach CSV dataset</p>
+                <p class="dropzone-hint">Supports comma-separated values (or drag & drop)</p>
+                <div class="browse-pill">📂 Select File</div>
+              </div>
+            </label>
+
+            <!-- Path Input Option -->
+            <div class="path-input-panel hidden" id="dataset-path-panel">
+              <label class="field-hint" for="dataset-project-select">Select from workspace:</label>
+              <select class="form-control" id="dataset-project-select">
+                <option value="">-- Choose detected project dataset --</option>
+              </select>
+              <div style="margin-top: 8px; display: flex; gap: 8px;">
+                <input type="text" class="form-control" id="dataset-path-input" placeholder="Or enter path e.g. sample_data/sample_dataset.csv">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-load-dataset-path">Load</button>
+              </div>
+            </div>
+
+            <!-- Dataset Stats Pill Grid -->
+            <div id="dataset-stats" class="stats-pills hidden">
+              <div class="stat-pill">
+                <span class="stat-label">Rows</span>
+                <span class="stat-val" id="stat-rows">0</span>
+              </div>
+              <div class="stat-pill">
+                <span class="stat-label">Columns</span>
+                <span class="stat-val" id="stat-cols">0</span>
+              </div>
+              <div class="stat-pill">
+                <span class="stat-label">Missing</span>
+                <span class="stat-val" id="stat-missing">0</span>
+              </div>
+              <div class="stat-pill">
+                <span class="stat-label">Duplicates</span>
+                <span class="stat-val" id="stat-duplicates">0</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CSV Data Preview Section -->
+        <section id="preview-section" class="card preview-card hidden">
+          <div class="card-header preview-header">
+            <div>
+              <h3 class="card-title">Dataset Preview</h3>
+              <p class="card-desc">Showing first 10 rows and schema structure</p>
+            </div>
+            <span class="badge" id="preview-filename-badge">dataset.csv</span>
+          </div>
+          <div class="table-container">
+            <table class="preview-table" id="preview-table">
+              <thead id="preview-thead"></thead>
+              <tbody id="preview-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 3. Evaluation Configuration Card -->
+        <section class="card config-card">
+          <div class="card-header">
+            <div class="step-badge">3</div>
+            <div>
+              <h2 class="card-title">Evaluation Configuration</h2>
+              <p class="card-desc">Configure target column, metric averaging, and missing data policies</p>
+            </div>
+          </div>
+
+          <div class="config-grid">
+            <div class="form-group">
+              <label for="target-column-select">Target / Label Column <span class="required">*</span></label>
+              <select id="target-column-select" class="form-control" disabled>
+                <option value="">Upload a dataset first</option>
+              </select>
+              <span class="field-hint">Excluded from features during inference</span>
+            </div>
+
+            <div class="form-group">
+              <label for="average-method-select">Metric Averaging</label>
+              <select id="average-method-select" class="form-control">
+                <option value="weighted" selected>Weighted (accounts for class imbalance)</option>
+                <option value="macro">Macro (unweighted mean across classes)</option>
+                <option value="micro">Micro (aggregates total TP, FP, FN)</option>
+              </select>
+              <span class="field-hint">Averaging method for Precision, Recall, and F1</span>
+            </div>
+
+            <div class="form-group">
+              <label for="missing-strategy-select">Missing Value Strategy</label>
+              <select id="missing-strategy-select" class="form-control">
+                <option value="drop" selected>Drop affected rows (preserve valid data)</option>
+                <option value="reject">Reject evaluation (strictly abort on NaNs)</option>
+              </select>
+              <span class="field-hint">Handling policy if NaNs are found</span>
+            </div>
+          </div>
+
+          <div class="actions-row">
+            <button id="run-btn" class="btn btn-primary" disabled>
+              <span class="btn-spinner hidden" id="run-spinner"></span>
+              <span class="btn-text" id="run-btn-text">Run Baseline Diagnostics</span>
+            </button>
+            <button id="reset-btn" class="btn btn-secondary">Reset All</button>
+          </div>
+        </section>
+
+        <!-- 4. Diagnostic Results Section -->
+        <section id="results-section" class="results-section hidden">
+          <!-- Results Banner / Summary Bar -->
+          <div class="results-summary-ribbon">
+            <div class="summary-item">
+              <span class="summary-label">Evaluated Rows</span>
+              <span class="summary-value" id="summary-total-rows">0</span>
+            </div>
+            <div class="summary-item success">
+              <span class="summary-label">Correct Predictions</span>
+              <span class="summary-value" id="summary-correct">0</span>
+            </div>
+            <div class="summary-item danger">
+              <span class="summary-label">Incorrect Predictions</span>
+              <span class="summary-value" id="summary-incorrect">0</span>
+            </div>
+            <div class="summary-item warning" id="summary-dropped-item">
+              <span class="summary-label">Rows Dropped (NaN)</span>
+              <span class="summary-value" id="summary-dropped">0</span>
+            </div>
+          </div>
+
+          <!-- Metric Badges Grid -->
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-title">Accuracy</div>
+              <div class="metric-value" id="metric-accuracy">0.00%</div>
+              <div class="metric-sub">Overall correct ratio</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-title">Precision</div>
+              <div class="metric-value" id="metric-precision">0.00%</div>
+              <div class="metric-sub" id="metric-prec-sub">Weighted average</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-title">Recall</div>
+              <div class="metric-value" id="metric-recall">0.00%</div>
+              <div class="metric-sub" id="metric-rec-sub">Weighted average</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-title">F1-Score</div>
+              <div class="metric-value" id="metric-f1">0.00%</div>
+              <div class="metric-sub" id="metric-f1-sub">Harmonic mean</div>
+            </div>
+          </div>
+
+          <!-- Confusion Matrix & Class Breakdown Grid -->
+          <div class="diagnostic-details-grid">
+            <!-- Confusion Matrix -->
+            <div class="card detail-card">
+              <div class="card-header">
+                <h3 class="card-title">Confusion Matrix</h3>
+                <p class="card-desc">Actual (rows) vs. Predicted (columns)</p>
+              </div>
+              <div class="cm-wrapper" id="cm-container"></div>
+            </div>
+
+            <!-- Per-Class Metrics -->
+            <div class="card detail-card">
+              <div class="card-header">
+                <h3 class="card-title">Per-Class Breakdown</h3>
+                <p class="card-desc">Precision, recall, and support per target category</p>
+              </div>
+              <div class="table-container">
+                <table class="report-table" id="class-report-table">
+                  <thead>
+                    <tr>
+                      <th>Class Label</th>
+                      <th>Precision</th>
+                      <th>Recall</th>
+                      <th>F1-Score</th>
+                      <th>Support</th>
+                    </tr>
+                  </thead>
+                  <tbody id="class-report-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Row-Level Predictions & Error Inspector -->
+          <div class="card row-inspector-card">
+            <div class="card-header inspector-header">
+              <div>
+                <h3 class="card-title">Prediction Error Inspector</h3>
+                <p class="card-desc">Inspect predictions at the individual row level</p>
+              </div>
+              <div class="filter-controls">
+                <button id="toggle-filter-errors" class="btn btn-sm btn-filter active">
+                  Showing: Incorrect Only (<span id="incorrect-count-badge">0</span>)
+                </button>
+                <button id="toggle-filter-all" class="btn btn-sm btn-filter">
+                  Show All Rows (<span id="all-count-badge">0</span>)
+                </button>
+              </div>
+            </div>
+
+            <div class="table-container inspector-table-container">
+              <table class="inspector-table" id="inspector-table">
+                <thead>
+                  <tr>
+                    <th style="width: 15%;">CSV Row #</th>
+                    <th style="width: 35%;">Ground Truth (Actual)</th>
+                    <th style="width: 35%;">Model Prediction</th>
+                    <th style="width: 15%;">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="inspector-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================================== -->
+      <!-- VIEW 2: MODULE 02 - HEALTH & DATA DRIFT       -->
+      <!-- ============================================== -->
+      <div id="module-02-view" class="module-view hidden">
+        <section class="card-grid">
+          <!-- 1. Reference Dataset (Baseline) -->
+          <div class="card">
+            <div class="card-header">
+              <div class="step-badge">1</div>
+              <div>
+                <h2 class="card-title">Reference Dataset (Baseline)</h2>
+                <p class="card-desc">Original training or benchmark CSV dataset</p>
+              </div>
+            </div>
+
+            <div class="input-mode-tabs">
+              <button type="button" class="mode-tab active" data-target-mode="upload" data-card="ref">📂 Browse Computer</button>
+              <button type="button" class="mode-tab" data-target-mode="path" data-card="ref">📝 File Path / Project File</button>
+            </div>
+
+            <label for="ref-file-input" class="dropzone" id="ref-dropzone">
+              <input type="file" id="ref-file-input" class="visually-hidden-input" accept=".csv">
+              <div class="dropzone-inner">
+                <div class="upload-icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                  </svg>
+                </div>
+                <p class="dropzone-main">Click here to attach Reference CSV</p>
+                <p class="dropzone-hint">Historical training baseline (or drag & drop)</p>
+                <div class="browse-pill">📂 Select File</div>
+              </div>
+            </label>
+
+            <!-- Path Input Option -->
+            <div class="path-input-panel hidden" id="ref-path-panel">
+              <label class="field-hint" for="ref-project-select">Select from workspace:</label>
+              <select class="form-control" id="ref-project-select">
+                <option value="">-- Choose detected dataset --</option>
+              </select>
+              <div style="margin-top: 8px; display: flex; gap: 8px;">
+                <input type="text" class="form-control" id="ref-path-input" placeholder="Or enter path e.g. sample_data/sample_dataset.csv">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-load-ref-path">Load</button>
+              </div>
+            </div>
+
+            <div id="ref-info" class="file-summary hidden">
+              <div class="file-summary-row">
+                <span class="file-name" id="ref-filename">ref.csv</span>
+                <span class="file-badge" id="ref-filesize">0 KB</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Current Production Dataset -->
+          <div class="card">
+            <div class="card-header">
+              <div class="step-badge">2</div>
+              <div>
+                <h2 class="card-title">Current Production Dataset</h2>
+                <p class="card-desc">New incoming data to compare against baseline</p>
+              </div>
+            </div>
+
+            <div class="input-mode-tabs">
+              <button type="button" class="mode-tab active" data-target-mode="upload" data-card="curr">📂 Browse Computer</button>
+              <button type="button" class="mode-tab" data-target-mode="path" data-card="curr">📝 File Path / Project File</button>
+            </div>
+
+            <label for="curr-file-input" class="dropzone" id="curr-dropzone">
+              <input type="file" id="curr-file-input" class="visually-hidden-input" accept=".csv">
+              <div class="dropzone-inner">
+                <div class="upload-icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                </div>
+                <p class="dropzone-main">Click here to attach Current CSV</p>
+                <p class="dropzone-hint">Recent production batch (or drag & drop)</p>
+                <div class="browse-pill">📂 Select File</div>
+              </div>
+            </label>
+
+            <!-- Path Input Option -->
+            <div class="path-input-panel hidden" id="curr-path-panel">
+              <label class="field-hint" for="curr-project-select">Select from workspace:</label>
+              <select class="form-control" id="curr-project-select">
+                <option value="">-- Choose detected dataset --</option>
+              </select>
+              <div style="margin-top: 8px; display: flex; gap: 8px;">
+                <input type="text" class="form-control" id="curr-path-input" placeholder="Or enter path e.g. sample_data/sample_dataset_drifted.csv">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-load-curr-path">Load</button>
+              </div>
+            </div>
+
+            <div id="curr-info" class="file-summary hidden">
+              <div class="file-summary-row">
+                <span class="file-name" id="curr-filename">curr.csv</span>
+                <span class="file-badge" id="curr-filesize">0 KB</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Optional: Model for Performance Degradation -->
+        <section class="card">
+          <div class="card-header">
+            <div class="step-badge">3</div>
+            <div>
+              <h2 class="card-title">Optional: Performance Degradation Tracking</h2>
+              <p class="card-desc">Upload model artifact to compare actual accuracy drop if both CSVs contain labels</p>
+            </div>
+          </div>
+
+          <div class="config-grid">
+            <div class="form-group">
+              <label for="drift-model-input">Trained Model Artifact (.joblib, .pkl)</label>
+              <input type="file" id="drift-model-input" class="form-control" accept=".joblib,.pkl">
+              <span class="field-hint">Optional: checks if drift degraded predictions</span>
+            </div>
+
+            <div class="form-group">
+              <label for="drift-target-select">Target / Label Column</label>
+              <input type="text" id="drift-target-select" class="form-control" placeholder="e.g. diagnosis">
+              <span class="field-hint">Excluded from drift testing; used for accuracy tracking</span>
+            </div>
+
+            <div class="form-group">
+              <label for="drift-pvalue-select">P-Value Significance Threshold</label>
+              <select id="drift-pvalue-select" class="form-control">
+                <option value="0.05" selected>0.05 (Standard statistical threshold)</option>
+                <option value="0.01">0.01 (Strict threshold, fewer alerts)</option>
+                <option value="0.10">0.10 (Sensitive threshold, earlier warnings)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="actions-row">
+            <button id="run-drift-btn" class="btn btn-primary" disabled>
+              <span class="btn-spinner hidden" id="drift-spinner"></span>
+              <span class="btn-text" id="run-drift-text">Analyze Data Drift & Health</span>
+            </button>
+            <button id="reset-drift-btn" class="btn btn-secondary">Reset Module 02</button>
+          </div>
+        </section>
+
+        <!-- Module 02 Results View -->
+        <section id="drift-results-section" class="results-section hidden">
+          <!-- Overall Health Banner -->
+          <div class="drift-health-banner" id="drift-health-banner">
+            <div class="health-badge" id="drift-health-badge">Moderate Drift</div>
+            <div class="health-text" id="drift-health-desc">
+              Statistical shift detected across incoming features.
+            </div>
+          </div>
+
+          <!-- Performance Degradation Card (if model evaluated) -->
+          <div id="perf-degradation-card" class="card hidden">
+            <div class="card-header">
+              <h3 class="card-title">Performance Degradation Comparison</h3>
+              <p class="card-desc">Comparing baseline model performance vs. current production data</p>
+            </div>
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <div class="metric-title">Baseline Accuracy</div>
+                <div class="metric-value" id="perf-base-acc">0.0%</div>
+                <div class="metric-sub">Reference dataset</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-title">Current Accuracy</div>
+                <div class="metric-value" id="perf-curr-acc">0.0%</div>
+                <div class="metric-sub">Current dataset</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-title">Accuracy Delta</div>
+                <div class="metric-value" id="perf-acc-delta">0.0%</div>
+                <div class="metric-sub" id="perf-acc-delta-sub">Performance change</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-title">F1-Score Delta</div>
+                <div class="metric-value" id="perf-f1-delta">0.00</div>
+                <div class="metric-sub" id="perf-f1-delta-sub">Harmonic drop</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feature-by-Feature Drift Table -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Feature-by-Feature Drift Analysis</h3>
+              <p class="card-desc">Detailed statistical test results, distribution shifts, and warnings</p>
+            </div>
+            <div class="table-container">
+              <table class="report-table" id="drift-features-table">
+                <thead>
+                  <tr>
+                    <th>Feature</th>
+                    <th>Type</th>
+                    <th>Test Used</th>
+                    <th>Stat / Metric</th>
+                    <th>p-value</th>
+                    <th>Severity</th>
+                    <th>Mean Shift</th>
+                    <th>Health Warnings</th>
+                  </tr>
+                </thead>
+                <tbody id="drift-features-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>ModelMD Diagnostic & Observability Core &bull; Local Development Instance &bull; Built with FastAPI & Scikit-learn</p>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
