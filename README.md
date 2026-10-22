@@ -4,31 +4,6 @@ ModelMD is a local-first platform designed to evaluate trained machine learning 
 
 ---
 
-## Architecture Overview
-
-```mermaid
-flowchart TD
-    subgraph UI[Modern Web Interface]
-        Tab1[Module 01: Baseline Diagnostics]
-        Tab2[Module 02: Health & Data Drift]
-    end
-
-    subgraph Backend[FastAPI Server: backend.app.main]
-        API1[/api/diagnostics/run]
-        API2[/api/drift/analyze]
-        API3[/api/dataset/inspect]
-    end
-
-    subgraph Engines[Diagnostic Core]
-        Worker[worker.py: Isolated Subprocess<br>Loads Model & Evaluates Inference]
-        Drift[drift.py: Statistical Drift Engine<br>KS-Test, Chi-Square, PSI, Wasserstein]
-    end
-
-    UI --> Backend
-    API1 --> Worker
-    API2 --> Drift
-    API2 -.->|Optional Degradation Tracking| Worker
-```
 
 ---
 
